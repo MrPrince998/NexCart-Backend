@@ -5,6 +5,7 @@ import { ConfigModule } from '@nestjs/config';
 import { envSchema } from './core/config/env.schema';
 import { RateLimiterMiddleware } from './core/middleware/rate-limiter.middleware';
 import { AuthModule } from './modules/auth/auth.module';
+import { DatabaseModule } from './core/database/database.module';
 
 @Module({
   imports: [
@@ -21,7 +22,8 @@ import { AuthModule } from './modules/auth/auth.module';
     // Authentication Module
     AuthModule,
 
-    // Database
+    // Database Module
+    DatabaseModule,
   ],
   controllers: [AppController],
   providers: [AppService],
