@@ -1,6 +1,13 @@
 import { INestApplication } from '@nestjs/common';
 import { SwaggerModule, DocumentBuilder } from '@nestjs/swagger';
 import {
+  SuccessResponse,
+  SuccessArrayResponse,
+  SuccessObjectResponse,
+  PaginatedResponse,
+  SuccessEmptyResponse,
+} from '@/common/schemas/success.response';
+import {
   ErrorResponse,
   ValidationErrorResponse,
   UnauthorizedResponse,
@@ -43,6 +50,11 @@ export function setupSwagger(app: INestApplication): void {
 
   const document = SwaggerModule.createDocument(app, config, {
     extraModels: [
+      SuccessResponse,
+      SuccessArrayResponse,
+      SuccessObjectResponse,
+      PaginatedResponse,
+      SuccessEmptyResponse,
       ErrorResponse,
       ValidationErrorResponse,
       UnauthorizedResponse,

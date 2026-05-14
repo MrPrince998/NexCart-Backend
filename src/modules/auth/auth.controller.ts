@@ -1,6 +1,7 @@
 import { Controller, All, Req, Res } from '@nestjs/common';
 import { ApiOperation, ApiTags, ApiResponse } from '@nestjs/swagger';
 import type { Request, Response } from 'express';
+import { SuccessResponse } from '@/common/schemas/success.response';
 import {
   ErrorResponse,
   UnauthorizedResponse,
@@ -21,14 +22,21 @@ export class AuthController {
   @ApiResponse({
     status: 200,
     description: 'Authentication request handled successfully',
+    type: SuccessResponse,
     schema: {
       example: {
         success: true,
         statusCode: 200,
-        title: 'OK',
-        message: 'Authentication processed',
-        timestamp: '2024-05-14T10:30:00.000Z',
-        path: '/api/v1/auth/sign-in',
+        message: 'Authentication successful',
+        data: {
+          user: {
+            id: 'user_123',
+            email: 'user@example.com',
+            name: 'John Doe',
+          },
+          token: 'jwt_token_here',
+        },
+        timestamp: '2026-05-13T12:00:00.000Z',
       },
     },
   })

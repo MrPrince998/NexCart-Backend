@@ -8,37 +8,37 @@ export class ErrorResponse {
     example: false,
     description: 'Whether the request was successful',
   })
-  success: boolean;
+  success!: boolean;
 
   @ApiProperty({
     example: 400,
     description: 'HTTP status code',
   })
-  statusCode: number;
+  statusCode!: number;
 
   @ApiProperty({
     example: 'Bad Request',
     description: 'Human-readable error title',
   })
-  title: string;
+  title!: string;
 
   @ApiProperty({
     example: 'Invalid request data',
     description: 'Detailed error message',
   })
-  message: string | string[];
+  message!: string | string[];
 
   @ApiProperty({
     example: '2024-05-14T10:30:00.000Z',
     description: 'ISO timestamp of when error occurred',
   })
-  timestamp: string;
+  timestamp!: string;
 
   @ApiProperty({
     example: '/api/v1/auth/sign-up',
     description: 'Request path that caused the error',
   })
-  path: string;
+  path!: string;
 }
 
 /**
