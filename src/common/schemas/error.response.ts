@@ -56,15 +56,6 @@ export class ValidationErrorResponse extends ErrorResponse {
     default: 'Bad Request',
   })
   title: string = 'Bad Request';
-
-  @ApiProperty({
-    example: [
-      'email must be an email',
-      'password must be at least 8 characters',
-    ],
-    description: 'Array of validation error messages',
-  })
-  message: string[];
 }
 
 /**

@@ -38,25 +38,12 @@ export class SuccessResponse<T = any> {
 /**
  * Success response with array data
  */
-export class SuccessArrayResponse<T = any> extends SuccessResponse<T[]> {
-  @ApiProperty({
-    description: 'Array of items',
-    isArray: true,
-    example: [],
-  })
-  data!: T[];
-}
+export class SuccessArrayResponse<T = any> extends SuccessResponse<T[]> {}
 
 /**
  * Success response with single object
  */
-export class SuccessObjectResponse<T = any> extends SuccessResponse<T> {
-  @ApiProperty({
-    description: 'Single object data',
-    example: {},
-  })
-  data!: T;
-}
+export class SuccessObjectResponse<T = any> extends SuccessResponse<T> {}
 
 /**
  * Success response with pagination
@@ -113,10 +100,4 @@ export class PaginatedResponse<T = any> {
 /**
  * Success response with no data (for DELETE, empty operations)
  */
-export class SuccessEmptyResponse extends SuccessResponse<null> {
-  @ApiProperty({
-    example: null,
-    description: 'No data in response',
-  })
-  data!: null;
-}
+export class SuccessEmptyResponse extends SuccessResponse<null> {}
