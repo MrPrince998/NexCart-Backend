@@ -6,6 +6,7 @@ import {
   UnauthorizedResponse,
   ForbiddenResponse,
   NotFoundResponse,
+  ConflictResponse,
   InternalServerErrorResponse,
 } from '@/common/schemas/error.response';
 
@@ -47,6 +48,7 @@ export function setupSwagger(app: INestApplication): void {
       UnauthorizedResponse,
       ForbiddenResponse,
       NotFoundResponse,
+      ConflictResponse,
       InternalServerErrorResponse,
     ],
   });

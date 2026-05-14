@@ -18,6 +18,20 @@ export class AppController {
       example: 'Hello World!',
     },
   })
+  @ApiResponse({
+    status: 500,
+    description: 'Internal server error',
+    schema: {
+      example: {
+        success: false,
+        statusCode: 500,
+        title: 'Internal Server Error',
+        message: 'Something went wrong',
+        timestamp: '2024-05-14T10:30:00.000Z',
+        path: '/api/v1',
+      },
+    },
+  })
   getHello(): string {
     return this.appService.getHello();
   }

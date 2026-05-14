@@ -1,6 +1,12 @@
 import { Controller, All, Req, Res } from '@nestjs/common';
 import { ApiOperation, ApiTags, ApiResponse } from '@nestjs/swagger';
 import type { Request, Response } from 'express';
+import {
+  ErrorResponse,
+  UnauthorizedResponse,
+  NotFoundResponse,
+  InternalServerErrorResponse,
+} from '@/common/schemas/error.response';
 import { auth } from '@/integrations/auth/auth';
 
 @Controller('/auth')
@@ -18,52 +24,33 @@ export class AuthController {
     schema: {
       example: {
         success: true,
+        statusCode: 200,
+        title: 'OK',
         message: 'Authentication processed',
+        timestamp: '2024-05-14T10:30:00.000Z',
+        path: '/api/v1/auth/sign-in',
       },
     },
   })
   @ApiResponse({
     status: 400,
     description: 'Bad request - Invalid input data',
-    schema: {
-      example: {
-        statusCode: 400,
-        message: 'Invalid email format',
-        error: 'Bad Request',
-      },
-    },
+    type: ErrorResponse,
   })
   @ApiResponse({
     status: 401,
     description: 'Unauthorized - Invalid credentials',
-    schema: {
-      example: {
-        statusCode: 401,
-        message: 'Invalid email or password',
-        error: 'Unauthorized',
-      },
-    },
+    type: UnauthorizedResponse,
   })
   @ApiResponse({
     status: 404,
     description: 'Route not found',
-    schema: {
-      example: {
-        statusCode: 404,
-        message: 'Not Found',
-      },
-    },
+    type: NotFoundResponse,
   })
   @ApiResponse({
     status: 500,
     description: 'Internal server error',
-    schema: {
-      example: {
-        statusCode: 500,
-        message: 'Internal server error',
-        error: 'Internal Server Error',
-      },
-    },
+    type: InternalServerErrorResponse,
   })
   async handleAuth(@Req() req: any, @Res() res: any) {
     const response = await auth.handler(req as any);

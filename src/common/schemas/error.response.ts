@@ -1,9 +1,15 @@
 import { ApiProperty } from '@nestjs/swagger';
 
 /**
- * Standard error response schema
+ * Standard error response schema matching HttpExceptionFilter format
  */
 export class ErrorResponse {
+  @ApiProperty({
+    example: false,
+    description: 'Whether the request was successful',
+  })
+  success: boolean;
+
   @ApiProperty({
     example: 400,
     description: 'HTTP status code',
@@ -11,38 +17,28 @@ export class ErrorResponse {
   statusCode: number;
 
   @ApiProperty({
+    example: 'Bad Request',
+    description: 'Human-readable error title',
+  })
+  title: string;
+
+  @ApiProperty({
     example: 'Invalid request data',
-    description: 'Error message',
+    description: 'Detailed error message',
   })
   message: string | string[];
 
   @ApiProperty({
-    example: 'Bad Request',
-    description: 'Error type',
-    required: false,
+    example: '2024-05-14T10:30:00.000Z',
+    description: 'ISO timestamp of when error occurred',
   })
-  error?: string;
-
-  @ApiProperty({
-    example: 'INVALID_INPUT',
-    description: 'Error code for programmatic handling',
-    required: false,
-  })
-  code?: string;
-
-  @ApiProperty({
-    example: '2024-05-14T10:30:00Z',
-    description: 'ISO timestamp of error',
-    required: false,
-  })
-  timestamp?: string;
+  timestamp: string;
 
   @ApiProperty({
     example: '/api/v1/auth/sign-up',
-    description: 'Request path',
-    required: false,
+    description: 'Request path that caused the error',
   })
-  path?: string;
+  path: string;
 }
 
 /**
@@ -50,23 +46,25 @@ export class ErrorResponse {
  */
 export class ValidationErrorResponse extends ErrorResponse {
   @ApiProperty({
-    example: [
-      {
-        field: 'email',
-        message: 'email must be an email',
-      },
-      {
-        field: 'password',
-        message: 'password must be at least 8 characters',
-      },
-    ],
-    description: 'Array of validation errors',
-    required: false,
+    example: 400,
+    default: 400,
   })
-  errors?: Array<{
-    field: string;
-    message: string;
-  }>;
+  statusCode: number = 400;
+
+  @ApiProperty({
+    example: 'Bad Request',
+    default: 'Bad Request',
+  })
+  title: string = 'Bad Request';
+
+  @ApiProperty({
+    example: [
+      'email must be an email',
+      'password must be at least 8 characters',
+    ],
+    description: 'Array of validation error messages',
+  })
+  message: string[];
 }
 
 /**
@@ -83,7 +81,7 @@ export class UnauthorizedResponse extends ErrorResponse {
     example: 'Unauthorized',
     default: 'Unauthorized',
   })
-  error: string = 'Unauthorized';
+  title: string = 'Unauthorized';
 }
 
 /**
@@ -100,7 +98,7 @@ export class ForbiddenResponse extends ErrorResponse {
     example: 'Forbidden',
     default: 'Forbidden',
   })
-  error: string = 'Forbidden';
+  title: string = 'Forbidden';
 }
 
 /**
@@ -117,7 +115,24 @@ export class NotFoundResponse extends ErrorResponse {
     example: 'Not Found',
     default: 'Not Found',
   })
-  error: string = 'Not Found';
+  title: string = 'Not Found';
+}
+
+/**
+ * Conflict error response schema
+ */
+export class ConflictResponse extends ErrorResponse {
+  @ApiProperty({
+    example: 409,
+    default: 409,
+  })
+  statusCode: number = 409;
+
+  @ApiProperty({
+    example: 'Conflict',
+    default: 'Conflict',
+  })
+  title: string = 'Conflict';
 }
 
 /**
@@ -134,5 +149,5 @@ export class InternalServerErrorResponse extends ErrorResponse {
     example: 'Internal Server Error',
     default: 'Internal Server Error',
   })
-  error: string = 'Internal Server Error';
+  title: string = 'Internal Server Error';
 }
