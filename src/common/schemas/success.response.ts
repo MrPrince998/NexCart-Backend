@@ -24,7 +24,6 @@ export class SuccessResponse<T = any> {
 
   @ApiProperty({
     description: 'Response data payload',
-    example: {},
   })
   data!: T;
 
@@ -70,7 +69,6 @@ export class PaginatedResponse<T = any> {
   @ApiProperty({
     description: 'Array of items',
     isArray: true,
-    example: [],
   })
   data!: T[];
 
@@ -80,6 +78,8 @@ export class PaginatedResponse<T = any> {
       limit: 10,
       total: 100,
       pages: 10,
+      nextPage: false,
+      prevPage: false,
     },
     description: 'Pagination metadata',
   })
@@ -88,6 +88,8 @@ export class PaginatedResponse<T = any> {
     limit: number;
     total: number;
     pages: number;
+    nextPage: boolean;
+    prevPage: boolean;
   };
 
   @ApiProperty({
