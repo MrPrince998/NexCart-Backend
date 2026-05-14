@@ -1,5 +1,13 @@
 import { INestApplication } from '@nestjs/common';
 import { SwaggerModule, DocumentBuilder } from '@nestjs/swagger';
+import {
+  ErrorResponse,
+  ValidationErrorResponse,
+  UnauthorizedResponse,
+  ForbiddenResponse,
+  NotFoundResponse,
+  InternalServerErrorResponse,
+} from '@/common/schemas/error.response';
 
 /**
  * Setup Swagger/OpenAPI documentation for the application
@@ -32,7 +40,17 @@ export function setupSwagger(app: INestApplication): void {
     .addTag('notifications', 'Notification endpoints')
     .build();
 
-  const document = SwaggerModule.createDocument(app, config);
+  const document = SwaggerModule.createDocument(app, config, {
+    extraModels: [
+      ErrorResponse,
+      ValidationErrorResponse,
+      UnauthorizedResponse,
+      ForbiddenResponse,
+      NotFoundResponse,
+      InternalServerErrorResponse,
+    ],
+  });
+
   SwaggerModule.setup('docs', app, document, {
     swaggerOptions: {
       persistAuthorization: true,
