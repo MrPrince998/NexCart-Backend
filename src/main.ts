@@ -4,6 +4,7 @@ import { HttpExceptionFilter } from '@/core/filters/http-exception.filter';
 import helmet from 'helmet';
 import { ValidationPipe } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
+import { SwaggerModule, DocumentBuilder } from '@nestjs/swagger';
 import { getAppConfig } from '@/core/config/app.config';
 import { loadEnvVariables } from '@/core/config/load-env';
 import { EnvVariables } from '@/core/config/env.schema';
@@ -41,10 +42,37 @@ async function bootstrap() {
     }),
   );
 
+  // Setup Swagger documentation
+  const config = new DocumentBuilder()
+    .setTitle('NexCart API')
+    .setDescription('NexCart API Documentation')
+    .setVersion('1.0.0')
+    .addBearerAuth(
+      {
+        type: 'http',
+        scheme: 'bearer',
+        bearerFormat: 'JWT',
+      },
+      'access-token',
+    )
+    .addTag('auth', 'Authentication endpoints')
+    .addTag('users', 'User management endpoints')
+    .addTag('products', 'Product management endpoints')
+    .addTag('orders', 'Order management endpoints')
+    .build();
+  const document = SwaggerModule.createDocument(app, config);
+  SwaggerModule.setup('docs', app, document, {
+    swaggerOptions: {
+      persistAuthorization: true,
+      displayOperationId: true,
+    },
+  });
+
   // Start the application and listen on the configured port
   const port = configService.get<number>('PORT', { infer: true }) || 3000;
   await app.listen(port, () => {
     console.log(`🚀 Server running on http://localhost:${port}`);
+    console.log(`📚 Swagger docs available at http://localhost:${port}/docs`);
   });
 }
 
