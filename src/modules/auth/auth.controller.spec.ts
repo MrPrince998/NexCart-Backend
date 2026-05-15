@@ -2,6 +2,15 @@ import { Test, TestingModule } from '@nestjs/testing';
 import { AuthController } from './auth.controller';
 import { AuthService } from './auth.service';
 
+jest.mock('@/integrations/auth/auth', () => ({
+  auth: {
+    handler: jest.fn(),
+    api: {
+      getSession: jest.fn(),
+    },
+  },
+}));
+
 describe('AuthController', () => {
   let controller: AuthController;
 

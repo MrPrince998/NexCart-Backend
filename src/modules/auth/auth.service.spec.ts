@@ -1,6 +1,14 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { AuthService } from './auth.service';
 
+jest.mock('@/integrations/auth/auth', () => ({
+  auth: {
+    api: {
+      getSession: jest.fn(),
+    },
+  },
+}));
+
 describe('AuthService', () => {
   let service: AuthService;
 
