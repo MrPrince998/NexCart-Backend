@@ -16,6 +16,16 @@ import {
   ConflictResponse,
   InternalServerErrorResponse,
 } from '@/common/schemas/error.response';
+import {
+  ProductResponseDto,
+  CategoryResponseDto,
+} from '@/modules/products/dto/product-response.dto';
+import {
+  ProductListResponseDto,
+  ProductDetailResponseDto,
+  ProductCreateResponseDto,
+  ProductDeleteResponseDto,
+} from '@/modules/products/dto/product-responses.dto';
 
 /**
  * Setup Swagger/OpenAPI documentation for the application
@@ -62,6 +72,12 @@ export function setupSwagger(app: INestApplication): void {
       NotFoundResponse,
       ConflictResponse,
       InternalServerErrorResponse,
+      ProductResponseDto,
+      CategoryResponseDto,
+      ProductListResponseDto,
+      ProductDetailResponseDto,
+      ProductCreateResponseDto,
+      ProductDeleteResponseDto,
     ],
   });
 
