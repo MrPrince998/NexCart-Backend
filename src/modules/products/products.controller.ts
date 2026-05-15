@@ -23,10 +23,11 @@ import {
   ApiForbiddenResponse,
 } from '@nestjs/swagger';
 import {
-  SuccessObjectResponse,
-  PaginatedResponse,
-  SuccessEmptyResponse,
-} from '@/common/schemas/success.response';
+  ProductListResponseDto,
+  ProductDetailResponseDto,
+  ProductCreateResponseDto,
+  ProductDeleteResponseDto,
+} from './dto/product-responses.dto';
 import {
   ValidationErrorResponse,
   NotFoundResponse,
@@ -41,7 +42,10 @@ export class ProductsController {
 
   @Post()
   @ApiOperation({ summary: 'Create a new product' })
-  @ApiCreatedResponse({ type: SuccessObjectResponse, description: 'Product created successfully' })
+  @ApiCreatedResponse({
+    type: ProductCreateResponseDto,
+    description: 'Product created successfully',
+  })
   @ApiBadRequestResponse({ type: ValidationErrorResponse })
   @ApiUnauthorizedResponse({ type: UnauthorizedResponse })
   @ApiForbiddenResponse({ type: ForbiddenResponse })
@@ -51,7 +55,10 @@ export class ProductsController {
 
   @Get()
   @ApiOperation({ summary: 'Get a paginated list of products' })
-  @ApiOkResponse({ type: PaginatedResponse, description: 'Products retrieved successfully' })
+  @ApiOkResponse({
+    type: ProductListResponseDto,
+    description: 'Products retrieved successfully',
+  })
   @ApiBadRequestResponse({ type: ValidationErrorResponse })
   findAll(@Query() query: ProductQueryDto) {
     return this.productsService.findAll(query);
@@ -59,7 +66,10 @@ export class ProductsController {
 
   @Get(':id')
   @ApiOperation({ summary: 'Get a product by id' })
-  @ApiOkResponse({ type: SuccessObjectResponse, description: 'Product retrieved successfully' })
+  @ApiOkResponse({
+    type: ProductDetailResponseDto,
+    description: 'Product retrieved successfully',
+  })
   @ApiNotFoundResponse({ type: NotFoundResponse })
   @ApiBadRequestResponse({ type: ValidationErrorResponse })
   findOne(@Param('id') id: string) {
@@ -68,7 +78,10 @@ export class ProductsController {
 
   @Patch(':id')
   @ApiOperation({ summary: 'Update a product by id' })
-  @ApiOkResponse({ type: SuccessObjectResponse, description: 'Product updated successfully' })
+  @ApiOkResponse({
+    type: ProductDetailResponseDto,
+    description: 'Product updated successfully',
+  })
   @ApiNotFoundResponse({ type: NotFoundResponse })
   @ApiBadRequestResponse({ type: ValidationErrorResponse })
   update(@Param('id') id: string, @Body() updateProductDto: UpdateProductDto) {
@@ -77,7 +90,10 @@ export class ProductsController {
 
   @Delete(':id')
   @ApiOperation({ summary: 'Delete a product by id' })
-  @ApiOkResponse({ type: SuccessEmptyResponse, description: 'Product deleted successfully' })
+  @ApiOkResponse({
+    type: ProductDeleteResponseDto,
+    description: 'Product deleted successfully',
+  })
   @ApiNotFoundResponse({ type: NotFoundResponse })
   remove(@Param('id') id: string) {
     return this.productsService.remove(id);
