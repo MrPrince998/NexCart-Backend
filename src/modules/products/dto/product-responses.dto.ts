@@ -11,7 +11,10 @@ export class ProductListResponseDto {
   @ApiProperty({ example: 'Products retrieved successfully' })
   message!: string;
 
-  @ApiProperty({ type: [ProductResponseDto], isArray: true })
+  @ApiProperty({
+    type: () => [ProductResponseDto],
+    isArray: true,
+  })
   data!: ProductResponseDto[];
 
   @ApiProperty({
@@ -47,7 +50,7 @@ export class ProductDetailResponseDto {
   @ApiProperty({ example: 'Product retrieved successfully' })
   message!: string;
 
-  @ApiProperty({ type: ProductResponseDto })
+  @ApiProperty({ type: () => ProductResponseDto })
   data!: ProductResponseDto;
 
   @ApiProperty({ example: '2026-05-13T12:00:00.000Z' })
@@ -64,7 +67,7 @@ export class ProductCreateResponseDto {
   @ApiProperty({ example: 'Product created successfully' })
   message!: string;
 
-  @ApiProperty({ type: ProductResponseDto })
+  @ApiProperty({ type: () => ProductResponseDto })
   data!: ProductResponseDto;
 
   @ApiProperty({ example: '2026-05-13T12:00:00.000Z' })
@@ -81,7 +84,7 @@ export class ProductDeleteResponseDto {
   @ApiProperty({ example: 'Product deleted successfully' })
   message!: string;
 
-  @ApiProperty({ example: null })
+  @ApiProperty({ type: 'null', example: null, nullable: true })
   data!: null;
 
   @ApiProperty({ example: '2026-05-13T12:00:00.000Z' })
