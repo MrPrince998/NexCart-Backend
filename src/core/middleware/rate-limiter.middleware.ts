@@ -16,7 +16,7 @@ export class RateLimiterMiddleware implements NestMiddleware {
     });
 
     // 100 per minute for all other routes
-    this.limiters['/'] = new RateLimiterMemory({
+    this.limiters['/api'] = new RateLimiterMemory({
       points: 100,
       duration: 60,
       execEvenly: true,
@@ -47,16 +47,16 @@ export class RateLimiterMiddleware implements NestMiddleware {
       .replace(/\/+/g, '/');
 
     // auth routes get stricter limits
-    if (/^\/(api\/)?auth(\/|$)/.test(pathname)) {
+    if (/^\/(?:api(?:\/v\d+)?)?\/auth(?:\/|$)/.test(pathname)) {
       return this.limiters['/auth'];
     }
 
     // all other API routes get the general limiter
-    if (/^\/(api\/)?/.test(pathname)) {
+    if (/^\/api(?:\/v\d+)?(?:\/|$)/.test(pathname)) {
       return this.limiters['/api'];
     }
 
-    return this.limiters['/'];
+    return this.limiters['/api'];
   }
 
   async use(req: Request, res: Response, next: NextFunction) {

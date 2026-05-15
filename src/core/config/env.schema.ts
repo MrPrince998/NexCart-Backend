@@ -19,13 +19,13 @@ export const envSchema = Joi.object({
     'any.required': 'DATABASE_URL is required for database connection',
   }),
 
-  // Redis Configuration (Upstash)
+  // Redis Configuration (Railway)
   REDIS_URL: Joi.string().uri().required().messages({
     'string.uri': 'REDIS_URL must be a valid URI',
     'any.required': 'REDIS_URL is required for Redis connection',
   }),
-  REDIS_TOKEN: Joi.string().required().messages({
-    'any.required': 'REDIS_TOKEN is required for Redis authentication',
+  REDIS_TOKEN: Joi.string().optional().messages({
+    'string.uri': 'REDIS_TOKEN is optional (used with Upstash only)',
   }),
 
   // JWT Authentication

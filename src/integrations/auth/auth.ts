@@ -9,7 +9,7 @@ const pool = new Pool({
 export const auth: any = betterAuth({
   appName: 'NexCart',
   baseURL: process.env.BETTER_AUTH_URL!,
-  basePath: '/api/auth',
+  basePath: '/api/v1/auth',
   secret: process.env.BETTER_AUTH_SECRET!,
   database: pool,
 

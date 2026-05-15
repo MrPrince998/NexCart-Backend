@@ -14,34 +14,27 @@ export function getDatabaseConfig(
     throw new Error('DATABASE_URL environment variable is required');
   }
 
-  const isSsl = nodeEnv === 'production';
+ return {
+   type: 'postgres',
+   url: databaseUrl,
+   autoLoadEntities: true,
+   entities: ['dist/**/*.entity.js'],
+   migrations: ['dist/migrations/*.js'],
 
-  return {
-    type: 'postgres',
-    url: databaseUrl,
-    entities: ['dist/**/*.entity.js'],
-    migrations: ['dist/migrations/*.js'],
-    autoLoadEntities: true,
-    synchronize: nodeEnv === 'development',
-    logging: nodeEnv === 'development' ? ['query', 'error', 'warn'] : ['error'],
-    logger: 'advanced-console',
-    // Connection pool settings
-    extra: {
-      max: nodeEnv === 'production' ? 50 : 20, // More connections in production
-      idleTimeoutMillis: 30000,
-      connectionTimeoutMillis: 2000,
-    },
-    // SSL configuration
-    ssl: isSsl
-      ? {
-          rejectUnauthorized: false,
-        }
-      : false,
-    // Application-wide settings
-    dropSchema: false,
-    migrationsRun: false,
-    installExtensions: true,
-  };
+   synchronize: nodeEnv === 'development',
+   logging: nodeEnv === 'development' ? ['query', 'error', 'warn'] : ['error'],
+
+   extra: {
+     max: 5,
+     idleTimeoutMillis: 30000,
+     connectionTimeoutMillis: 30000,
+     statement_timeout: 30000,
+   },
+
+   dropSchema: false,
+   migrationsRun: false,
+   installExtensions: true,
+ };
 }
 
 /**
