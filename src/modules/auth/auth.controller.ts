@@ -61,11 +61,11 @@ export class AuthController {
     type: InternalServerErrorResponse,
   })
   async handleAuth(@Req() req: any, @Res() res: any) {
-    const response = await auth.handler(req as any);
+    const response = await auth.handler(req);
     if (response) {
       res.status(response.status || 200);
       for (const [key, value] of Object.entries(response.headers || {})) {
-        res.setHeader(key, value as string | string[]);
+        res.setHeader(key, value);
       }
       res.send(response.body);
     } else {

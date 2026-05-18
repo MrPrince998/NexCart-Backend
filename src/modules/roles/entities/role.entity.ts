@@ -1,4 +1,5 @@
 import { User } from '@/modules/users/entities/user.entity';
+import { Permission } from '@/common/enums';
 import {
   Column,
   CreateDateColumn,
@@ -23,6 +24,9 @@ export class Role {
 
   @Column({ default: false })
   isSystem!: boolean;
+
+  @Column({ type: 'jsonb', nullable: true })
+  permissions!: Permission[] | null;
 
   @OneToMany(() => User, (user) => user.role)
   users!: User[];
