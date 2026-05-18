@@ -24,7 +24,7 @@ export async function paginate<T extends ObjectLiteral>(
     // Clone query builder to get total count before pagination
     const countQuery = source.clone();
     total = await countQuery.getCount();
-    
+
     // Apply pagination to the original query
     data = await source.skip(skip).take(limit).getMany();
   } else {
