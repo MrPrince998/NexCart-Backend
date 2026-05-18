@@ -1,12 +1,19 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
+import { EventEmitter2 } from '@nestjs/event-emitter';
 import { InjectRepository } from '@nestjs/typeorm';
-import { DataSource, Repository } from 'typeorm';
+import { DataSource, In, Repository } from 'typeorm';
 import { BadRequestException } from '@nestjs/common';
 import { InventoryMovementType } from '@/common/enums';
+import { BackInStockEvent, SellerLowStockEvent } from '@/common/events';
 import { successResponse } from '@/common/handler/response.helper';
+import { User } from '@/modules/users/entities/user.entity';
+import { WishlistItem } from '@/modules/wishlist/entities/wishlist-item.entity';
 import { InventoryItem } from './entities/inventory-item.entity';
 import { InventoryMovement } from './entities/inventory-movement.entity';
-import { CreateInventoryMovementDto, UpdateInventoryDto } from './dto/inventory.dto';
+import {
+  CreateInventoryMovementDto,
+  UpdateInventoryDto,
+} from './dto/inventory.dto';
 
 @Injectable()
 export class InventoryService {
@@ -16,6 +23,7 @@ export class InventoryService {
     @InjectRepository(InventoryMovement)
     private readonly movementRepository: Repository<InventoryMovement>,
     private readonly dataSource: DataSource,
+    private readonly eventEmitter: EventEmitter2,
   ) {}
 
   async findAll() {
@@ -31,9 +39,13 @@ export class InventoryService {
   async update(id: string, dto: UpdateInventoryDto) {
     const item = await this.inventoryRepository.findOne({ where: { id } });
     if (!item) throw new NotFoundException('Inventory item not found');
+    const oldAvailable = this.getAvailableQuantity(item);
     item.quantity = dto.quantity;
     item.lowStockThreshold = dto.lowStockThreshold ?? item.lowStockThreshold;
-    return successResponse(await this.inventoryRepository.save(item), 'Inventory updated successfully');
+    const savedItem = await this.inventoryRepository.save(item);
+    await this.emitInventoryEmailEvents(savedItem.id, oldAvailable);
+
+    return successResponse(savedItem, 'Inventory updated successfully');
   }
 
   async addMovement(id: string, dto: CreateInventoryMovementDto) {
@@ -41,6 +53,7 @@ export class InventoryService {
     if (!item) throw new NotFoundException('Inventory item not found');
 
     const result = await this.dataSource.transaction(async (manager) => {
+      const oldAvailable = this.getAvailableQuantity(item);
       this.applyMovement(item, dto.type, dto.quantity);
       const savedItem = await manager.save(InventoryItem, item);
       const movement = await manager.save(
@@ -54,10 +67,77 @@ export class InventoryService {
           note: dto.note ?? null,
         }),
       );
-      return { item: savedItem, movement };
+      return { item: savedItem, movement, oldAvailable };
     });
 
+    await this.emitInventoryEmailEvents(result.item.id, result.oldAvailable);
+
     return successResponse(result, 'Inventory movement recorded successfully');
+  }
+
+  private async emitInventoryEmailEvents(id: string, oldAvailable: number) {
+    const item = await this.inventoryRepository.findOne({
+      where: { id },
+      relations: { product: { store: { owner: true } } },
+    });
+    if (!item) return;
+
+    const available = this.getAvailableQuantity(item);
+
+    if (
+      item.lowStockThreshold > 0 &&
+      available <= item.lowStockThreshold &&
+      item.product.store?.owner?.emailNotificationsEnabled &&
+      item.product.store.owner.sellerEmailNotificationsEnabled
+    ) {
+      this.eventEmitter.emit(
+        'seller.low_stock',
+        new SellerLowStockEvent(
+          item.productId,
+          item.product.name,
+          available,
+          item.lowStockThreshold,
+          item.product.store.owner.email,
+          item.product.store.owner.name,
+        ),
+      );
+    }
+
+    if (oldAvailable <= 0 && available > 0) {
+      await this.emitBackInStock(item.productId, item.product.name);
+    }
+  }
+
+  private async emitBackInStock(productId: string, productName: string) {
+    const wishlistItems = await this.dataSource
+      .getRepository(WishlistItem)
+      .find({ where: { productId } });
+    const userIds = [...new Set(wishlistItems.map((item) => item.userId))];
+    if (!userIds.length) return;
+
+    const users = await this.dataSource.getRepository(User).find({
+      where: { id: In(userIds) },
+    });
+
+    for (const user of users) {
+      if (
+        !user.emailNotificationsEnabled ||
+        !user.wishlistEmailNotificationsEnabled
+      ) {
+        continue;
+      }
+
+      this.eventEmitter.emit(
+        'wishlist.back_in_stock',
+        new BackInStockEvent(productId, productName, user.email, user.name),
+      );
+    }
+  }
+
+  private getAvailableQuantity(
+    item: Pick<InventoryItem, 'quantity' | 'reservedQuantity'>,
+  ) {
+    return item.quantity - item.reservedQuantity;
   }
 
   async movements(id: string) {

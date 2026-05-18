@@ -5,9 +5,14 @@ import {
   InternalServerErrorException,
   NotFoundException,
 } from '@nestjs/common';
+import { EventEmitter2 } from '@nestjs/event-emitter';
 import { InjectRepository } from '@nestjs/typeorm';
 import { DataSource, Repository } from 'typeorm';
 import Stripe from 'stripe';
+import {
+  OrderStatusChangedEvent,
+  PaymentStatusChangedEvent,
+} from '@/common/events';
 import {
   OrderStatus,
   PaymentProvider,
@@ -31,6 +36,7 @@ export class PaymentsService {
     @InjectRepository(PaymentWebhookEvent)
     private readonly webhookRepository: Repository<PaymentWebhookEvent>,
     private readonly dataSource: DataSource,
+    private readonly eventEmitter: EventEmitter2,
   ) {
     const secretKey = process.env.STRIPE_SECRET_KEY ?? process.env.PAYMENT_API_KEY;
     this.stripe = secretKey
@@ -63,7 +69,7 @@ export class PaymentsService {
     });
     if (!payment) throw new NotFoundException('Payment not found');
 
-    const updated = await this.dataSource.transaction(async (manager) => {
+    const result = await this.dataSource.transaction(async (manager) => {
       payment.status = dto.status;
       payment.paidAt =
         dto.status === PaymentStatus.PAID ? new Date() : payment.paidAt;
@@ -71,8 +77,9 @@ export class PaymentsService {
 
       const order = await manager.findOne(Order, {
         where: { id: payment.orderId },
+        relations: { user: true },
       });
-      if (!order) return savedPayment;
+      if (!order) return { savedPayment, event: null };
 
       const previousStatus = order.status;
       order.paymentStatus = dto.status;
@@ -103,10 +110,39 @@ export class PaymentsService {
         );
       }
 
-      return savedPayment;
+      return {
+        savedPayment,
+        paymentEvent: new PaymentStatusChangedEvent(
+          order.id,
+          order.orderNumber,
+          order.user.email,
+          order.user.name,
+          dto.status,
+          Number(savedPayment.amount),
+          savedPayment.currency,
+        ),
+        orderEvent:
+          order.status !== previousStatus
+            ? new OrderStatusChangedEvent(
+                order.id,
+                order.orderNumber,
+                order.user.email,
+                order.user.name,
+                order.status,
+                previousStatus,
+              )
+            : null,
+      };
     });
 
-    return successResponse(updated, 'Payment updated successfully');
+    if (result.paymentEvent) {
+      this.eventEmitter.emit('payment.status.changed', result.paymentEvent);
+    }
+    if (result.orderEvent) {
+      this.eventEmitter.emit('order.status.changed', result.orderEvent);
+    }
+
+    return successResponse(result.savedPayment, 'Payment updated successfully');
   }
 
   async createStripeCheckoutSession(
@@ -321,15 +357,18 @@ export class PaymentsService {
     checkoutSessionId: string | null,
     paymentIntentId: string | null,
   ) {
-    await this.dataSource.transaction(async (manager) => {
+    const eventPayload = await this.dataSource.transaction(async (manager) => {
       let payment = await manager.findOne(Payment, {
         where: checkoutSessionId
           ? { checkoutSessionId }
           : { providerTransactionId: paymentIntentId ?? '' },
       });
 
-      const order = await manager.findOne(Order, { where: { id: orderId } });
-      if (!order) return;
+      const order = await manager.findOne(Order, {
+        where: { id: orderId },
+        relations: { user: true },
+      });
+      if (!order) return null;
 
       if (!payment) {
         payment = manager.create(Payment, {
@@ -372,7 +411,38 @@ export class PaymentsService {
           }),
         );
       }
+
+      return {
+        paymentEvent: new PaymentStatusChangedEvent(
+          order.id,
+          order.orderNumber,
+          order.user.email,
+          order.user.name,
+          status,
+          Number(payment.amount),
+          payment.currency,
+        ),
+        orderEvent:
+          oldStatus !== order.status
+            ? new OrderStatusChangedEvent(
+                order.id,
+                order.orderNumber,
+                order.user.email,
+                order.user.name,
+                order.status,
+                oldStatus,
+              )
+            : null,
+      };
     });
+
+    if (eventPayload) {
+      this.eventEmitter.emit('payment.status.changed', eventPayload.paymentEvent);
+
+      if (eventPayload.orderEvent) {
+        this.eventEmitter.emit('order.status.changed', eventPayload.orderEvent);
+      }
+    }
   }
 
   private toStripeAmount(amount: number) {
