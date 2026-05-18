@@ -4,8 +4,14 @@ import {
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
+import { EventEmitter2 } from '@nestjs/event-emitter';
 import { InjectRepository } from '@nestjs/typeorm';
 import { DataSource, Repository } from 'typeorm';
+import {
+  OrderPlacedEvent,
+  OrderStatusChangedEvent,
+  ReviewRequestEvent,
+} from '@/common/events';
 import { CartItem } from '@/modules/cart/entities/cart-item.entity';
 import {
   CouponStatus,
@@ -21,8 +27,12 @@ import { InventoryItem } from '@/modules/inventory/entities/inventory-item.entit
 import { InventoryMovement } from '@/modules/inventory/entities/inventory-movement.entity';
 import { Product } from '@/modules/products/entities/product.entity';
 import { ShippingRate } from '@/modules/shipping-rates/entities/shipping-rate.entity';
+import { User } from '@/modules/users/entities/user.entity';
 import { paginate } from '@/common/handler/pagination.helper';
-import { emptyReponse, successResponse } from '@/common/handler/response.helper';
+import {
+  emptyReponse,
+  successResponse,
+} from '@/common/handler/response.helper';
 import { CheckoutDto } from './dto/checkout.dto';
 import { OrderQueryDto } from './dto/order-query.dto';
 import { UpdateOrderStatusDto } from './dto/update-order-status.dto';
@@ -53,10 +63,16 @@ export class OrdersService {
     private readonly cartRepository: Repository<CartItem>,
     @InjectRepository(OrderStatusHistory)
     private readonly historyRepository: Repository<OrderStatusHistory>,
+    @InjectRepository(User)
+    private readonly userRepository: Repository<User>,
     private readonly dataSource: DataSource,
+    private readonly eventEmitter: EventEmitter2,
   ) {}
 
   async checkout(userId: string, dto: CheckoutDto) {
+    const user = await this.userRepository.findOne({ where: { id: userId } });
+    if (!user) throw new NotFoundException('User not found');
+
     const cartItems = await this.cartRepository.find({
       where: { userId },
       relations: { product: true },
@@ -75,7 +91,9 @@ export class OrdersService {
 
     const order = await this.dataSource.transaction(async (manager) => {
       const subtotal = cartItems.reduce((sum, item) => {
-        const unitPrice = Number(item.product.discountPrice ?? item.product.price);
+        const unitPrice = Number(
+          item.product.discountPrice ?? item.product.price,
+        );
         return sum + unitPrice * item.quantity;
       }, 0);
 
@@ -94,7 +112,10 @@ export class OrdersService {
       );
       const shippingTotal = Number(shippingRate?.price ?? 0);
       const taxTotal = 0;
-      const total = Math.max(0, subtotal + shippingTotal + taxTotal - discountTotal);
+      const total = Math.max(
+        0,
+        subtotal + shippingTotal + taxTotal - discountTotal,
+      );
 
       await this.decrementStock(manager, cartItems);
 
@@ -117,7 +138,9 @@ export class OrdersService {
       const savedOrder = await manager.save(newOrder);
 
       const orderItems = cartItems.map((item) => {
-        const unitPrice = Number(item.product.discountPrice ?? item.product.price);
+        const unitPrice = Number(
+          item.product.discountPrice ?? item.product.price,
+        );
         return manager.create(OrderItem, {
           orderId: savedOrder.id,
           productId: item.productId,
@@ -161,6 +184,34 @@ export class OrdersService {
       return savedOrder;
     });
 
+    this.eventEmitter.emit(
+      'order.placed',
+      new OrderPlacedEvent(
+        order.id,
+        order.orderNumber,
+        user.id,
+        user.email,
+        user.name,
+        cartItems.map((item) => {
+          const unitPrice = Number(
+            item.product.discountPrice ?? item.product.price,
+          );
+          return {
+            productName: item.product.name,
+            quantity: item.quantity,
+            unitPrice,
+            lineTotal: unitPrice * item.quantity,
+          };
+        }),
+        Number(order.subtotal),
+        Number(order.shippingTotal),
+        Number(order.discountTotal),
+        Number(order.taxTotal),
+        Number(order.total),
+        order.createdAt,
+      ),
+    );
+
     return this.findOneForUser(userId, order.id);
   }
 
@@ -196,7 +247,8 @@ export class OrdersService {
 
   async findOneForUser(userId: string, id: string) {
     const order = await this.findOne(id);
-    if (order.data.userId !== userId) throw new ForbiddenException('Forbidden order');
+    if (order.data.userId !== userId)
+      throw new ForbiddenException('Forbidden order');
 
     return successResponse(order.data, 'Order retrieved successfully');
   }
@@ -214,7 +266,7 @@ export class OrdersService {
   async updateStatus(id: string, dto: UpdateOrderStatusDto) {
     const order = await this.orderRepository.findOne({
       where: { id },
-      relations: { items: true },
+      relations: { items: true, user: true },
     });
     if (!order) throw new NotFoundException('Order not found');
 
@@ -231,11 +283,11 @@ export class OrdersService {
         await manager.save(
           OrderStatusHistory,
           manager.create(OrderStatusHistory, {
-          orderId: id,
-          fromStatus: oldStatus,
-          toStatus: dto.status,
-          changedByUserId: null,
-          note: null,
+            orderId: id,
+            fromStatus: oldStatus,
+            toStatus: dto.status,
+            changedByUserId: null,
+            note: null,
           }),
         );
 
@@ -246,6 +298,33 @@ export class OrdersService {
 
       return savedOrder;
     });
+
+    if (dto.status && dto.status !== oldStatus) {
+      this.eventEmitter.emit(
+        'order.status.changed',
+        new OrderStatusChangedEvent(
+          updated.id,
+          updated.orderNumber,
+          order.user.email,
+          order.user.name,
+          updated.status,
+          oldStatus,
+        ),
+      );
+
+      if (updated.status === OrderStatus.DELIVERED) {
+        this.eventEmitter.emit(
+          'order.review.requested',
+          new ReviewRequestEvent(
+            updated.id,
+            updated.orderNumber,
+            order.user.email,
+            order.user.name,
+            `${process.env.FRONTEND_URL}/orders/${updated.id}/review`,
+          ),
+        );
+      }
+    }
 
     return successResponse(updated, 'Order updated successfully');
   }
@@ -314,8 +393,13 @@ export class OrdersService {
     if (coupon.expiresAt && coupon.expiresAt < now) {
       throw new BadRequestException('Coupon has expired');
     }
-    if (coupon.minimumOrderAmount && subtotal < Number(coupon.minimumOrderAmount)) {
-      throw new BadRequestException('Order does not meet coupon minimum amount');
+    if (
+      coupon.minimumOrderAmount &&
+      subtotal < Number(coupon.minimumOrderAmount)
+    ) {
+      throw new BadRequestException(
+        'Order does not meet coupon minimum amount',
+      );
     }
     if (coupon.usageLimit && coupon.usedCount >= coupon.usageLimit) {
       throw new BadRequestException('Coupon usage limit reached');
@@ -325,7 +409,9 @@ export class OrdersService {
         where: { couponId: coupon.id, userId },
       });
       if (userUsageCount >= coupon.usageLimitPerUser) {
-        throw new BadRequestException('Coupon usage limit reached for this user');
+        throw new BadRequestException(
+          'Coupon usage limit reached for this user',
+        );
       }
     }
 
@@ -367,7 +453,8 @@ export class OrdersService {
       const countries = rate.zone.countries.map((item) => item.toUpperCase());
       const states = rate.zone.states?.map((item) => item.toUpperCase()) ?? [];
       const countryMatches = countries.includes(country.toUpperCase());
-      const stateMatches = !states.length || states.includes(state.toUpperCase());
+      const stateMatches =
+        !states.length || states.includes(state.toUpperCase());
       const minMatches =
         !rate.minOrderAmount || orderAmount >= Number(rate.minOrderAmount);
       const maxMatches =
@@ -386,7 +473,9 @@ export class OrdersService {
     for (const item of cartItems) {
       const inventoryQuery = manager
         .createQueryBuilder(InventoryItem, 'inventory')
-        .where('inventory.productId = :productId', { productId: item.productId });
+        .where('inventory.productId = :productId', {
+          productId: item.productId,
+        });
 
       if (item.variantId) {
         inventoryQuery.andWhere('inventory.variantId = :variantId', {
@@ -443,7 +532,9 @@ export class OrdersService {
     for (const item of orderItems) {
       const inventoryQuery = manager
         .createQueryBuilder(InventoryItem, 'inventory')
-        .where('inventory.productId = :productId', { productId: item.productId });
+        .where('inventory.productId = :productId', {
+          productId: item.productId,
+        });
 
       if (item.variantId) {
         inventoryQuery.andWhere('inventory.variantId = :variantId', {
@@ -474,7 +565,12 @@ export class OrdersService {
         continue;
       }
 
-      await manager.increment(Product, { id: item.productId }, 'stock', item.quantity);
+      await manager.increment(
+        Product,
+        { id: item.productId },
+        'stock',
+        item.quantity,
+      );
     }
   }
 

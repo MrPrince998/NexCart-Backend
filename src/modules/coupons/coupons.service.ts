@@ -1,7 +1,13 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
+import { EventEmitter2 } from '@nestjs/event-emitter';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
-import { emptyReponse, successResponse } from '@/common/handler/response.helper';
+import { CouponPromoEvent } from '@/common/events';
+import {
+  emptyReponse,
+  successResponse,
+} from '@/common/handler/response.helper';
+import { User } from '@/modules/users/entities/user.entity';
 import { Coupon } from './entities/coupon.entity';
 import { CouponRedemption } from './entities/coupon-redemption.entity';
 import { CreateCouponDto, UpdateCouponDto } from './dto/coupon.dto';
@@ -13,6 +19,9 @@ export class CouponsService {
     private readonly couponRepository: Repository<Coupon>,
     @InjectRepository(CouponRedemption)
     private readonly redemptionRepository: Repository<CouponRedemption>,
+    @InjectRepository(User)
+    private readonly userRepository: Repository<User>,
+    private readonly eventEmitter: EventEmitter2,
   ) {}
 
   async findAll() {
@@ -38,14 +47,23 @@ export class CouponsService {
       usageLimit: dto.usageLimit ?? null,
       usageLimitPerUser: dto.usageLimitPerUser ?? null,
     });
-    return successResponse(await this.couponRepository.save(coupon), 'Coupon created successfully', 201);
+    const savedCoupon = await this.couponRepository.save(coupon);
+    await this.emitCouponPromo(savedCoupon);
+
+    return successResponse(savedCoupon, 'Coupon created successfully', 201);
   }
 
   async update(id: string, dto: UpdateCouponDto) {
     const coupon = await this.couponRepository.findOne({ where: { id } });
     if (!coupon) throw new NotFoundException('Coupon not found');
-    Object.assign(coupon, { ...dto, code: dto.code?.toUpperCase() ?? coupon.code });
-    return successResponse(await this.couponRepository.save(coupon), 'Coupon updated successfully');
+    Object.assign(coupon, {
+      ...dto,
+      code: dto.code?.toUpperCase() ?? coupon.code,
+    });
+    const savedCoupon = await this.couponRepository.save(coupon);
+    await this.emitCouponPromo(savedCoupon);
+
+    return successResponse(savedCoupon, 'Coupon updated successfully');
   }
 
   async remove(id: string) {
@@ -63,5 +81,27 @@ export class CouponsService {
       }),
       'Coupon redemptions retrieved successfully',
     );
+  }
+
+  private async emitCouponPromo(coupon: Coupon) {
+    const users = await this.userRepository.find({
+      where: {
+        emailNotificationsEnabled: true,
+        marketingEmailNotificationsEnabled: true,
+      },
+    });
+
+    for (const user of users) {
+      this.eventEmitter.emit(
+        'coupon.promo',
+        new CouponPromoEvent(
+          coupon.code,
+          coupon.name,
+          coupon.description,
+          user.email,
+          user.name,
+        ),
+      );
+    }
   }
 }

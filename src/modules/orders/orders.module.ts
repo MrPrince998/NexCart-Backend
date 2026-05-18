@@ -9,6 +9,7 @@ import { Payment } from '@/modules/payments/entities/payment.entity';
 import { Product } from '@/modules/products/entities/product.entity';
 import { ShippingRate } from '@/modules/shipping-rates/entities/shipping-rate.entity';
 import { Shipment } from '@/modules/shipping/entities/shipment.entity';
+import { User } from '@/modules/users/entities/user.entity';
 import { OrdersController } from './orders.controller';
 import { OrdersService } from './orders.service';
 import { OrderItem } from './entities/order-item.entity';
@@ -30,6 +31,7 @@ import { OrderStatusHistory } from './entities/order-status-history.entity';
       Product,
       ShippingRate,
       Shipment,
+      User,
     ]),
   ],
   controllers: [OrdersController],
