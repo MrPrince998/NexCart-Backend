@@ -14,27 +14,27 @@ export function getDatabaseConfig(
     throw new Error('DATABASE_URL environment variable is required');
   }
 
- return {
-   type: 'postgres',
-   url: databaseUrl,
-   autoLoadEntities: true,
-   entities: ['dist/**/*.entity.js'],
-   migrations: ['dist/migrations/*.js'],
+  return {
+    type: 'postgres',
+    url: databaseUrl,
+    autoLoadEntities: true,
+    entities: ['dist/**/*.entity.js'],
+    migrations: ['dist/migrations/*.js'],
 
-   synchronize: nodeEnv === 'development',
-   logging: nodeEnv === 'development' ? ['query', 'error', 'warn'] : ['error'],
+    synchronize: nodeEnv === 'development',
+    logging: nodeEnv === 'development' ? ['query', 'error', 'warn'] : ['error'],
 
-   extra: {
-     max: 5,
-     idleTimeoutMillis: 30000,
-     connectionTimeoutMillis: 30000,
-     statement_timeout: 30000,
-   },
+    extra: {
+      max: 5,
+      idleTimeoutMillis: 30000,
+      connectionTimeoutMillis: 30000,
+      statement_timeout: 30000,
+    },
 
-   dropSchema: false,
-   migrationsRun: false,
-   installExtensions: true,
- };
+    dropSchema: false,
+    migrationsRun: false,
+    installExtensions: true,
+  };
 }
 
 /**

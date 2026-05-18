@@ -19,14 +19,23 @@ export const envSchema = Joi.object({
     'any.required': 'DATABASE_URL is required for database connection',
   }),
 
-  // Redis Configuration (Railway)
-  REDIS_URL: Joi.string().uri().required().messages({
-    'string.uri': 'REDIS_URL must be a valid URI',
-    'any.required': 'REDIS_URL is required for Redis connection',
-  }),
-  REDIS_TOKEN: Joi.string().optional().messages({
-    'string.uri': 'REDIS_TOKEN is optional (used with Upstash only)',
-  }),
+  // Redis TCP configuration for BullMQ, cache, and Socket.IO.
+  // Use redis:// for local/plain Redis or rediss:// for TLS Redis providers.
+  REDIS_URL: Joi.string()
+    .uri({ scheme: ['redis', 'rediss'] })
+    .optional()
+    .messages({
+      'string.uri':
+        'REDIS_URL must be a Redis TCP URL, e.g. redis://localhost:6379 or rediss://default:password@host:6379. Upstash REST URLs belong in UPSTASH_REDIS_REST_URL.',
+      'string.uriCustomScheme':
+        'REDIS_URL must be a Redis TCP URL, e.g. redis://localhost:6379 or rediss://default:password@host:6379. Upstash REST URLs belong in UPSTASH_REDIS_REST_URL.',
+    }),
+
+  // Optional Upstash REST configuration for @upstash/redis.
+  UPSTASH_REDIS_REST_URL: Joi.string()
+    .uri({ scheme: ['http', 'https'] })
+    .optional(),
+  UPSTASH_REDIS_REST_TOKEN: Joi.string().optional(),
 
   // JWT Authentication
   JWT_SECRET: Joi.string().min(32).required().messages({
@@ -59,6 +68,10 @@ export const envSchema = Joi.object({
     .optional(),
   PAYMENT_API_KEY: Joi.string().optional(),
   PAYMENT_API_SECRET: Joi.string().optional(),
+  STRIPE_SECRET_KEY: Joi.string().optional(),
+  STRIPE_WEBHOOK_SECRET: Joi.string().optional(),
+  STRIPE_SUCCESS_URL: Joi.string().uri().optional(),
+  STRIPE_CANCEL_URL: Joi.string().uri().optional(),
 
   // Rate Limiting
   RATE_LIMIT_WINDOW_MS: Joi.number().default(60000), // 1 minute
@@ -83,21 +96,15 @@ export const envSchema = Joi.object({
   GOOGLE_CLIENT_SECRET: Joi.string().optional(),
 
   // Better Auth Configuration
-  BETTER_AUTH_SECRET: Joi.string()
-    .min(32)
-    .required()
-    .messages({
-      'string.min': 'BETTER_AUTH_SECRET must be at least 32 characters long',
-      'any.required': 'BETTER_AUTH_SECRET is required for authentication',
-    }),
+  BETTER_AUTH_SECRET: Joi.string().min(32).required().messages({
+    'string.min': 'BETTER_AUTH_SECRET must be at least 32 characters long',
+    'any.required': 'BETTER_AUTH_SECRET is required for authentication',
+  }),
 
-  BETTER_AUTH_URL: Joi.string()
-    .uri()
-    .required()
-    .messages({
-      'string.uri': 'BETTER_AUTH_URL must be a valid URI',
-      'any.required': 'BETTER_AUTH_URL is required for authentication',
-    }),
+  BETTER_AUTH_URL: Joi.string().uri().required().messages({
+    'string.uri': 'BETTER_AUTH_URL must be a valid URI',
+    'any.required': 'BETTER_AUTH_URL is required for authentication',
+  }),
 });
 
 export interface EnvVariables {
@@ -105,8 +112,9 @@ export interface EnvVariables {
   PORT: number;
   FRONTEND_URL: string;
   DATABASE_URL: string;
-  REDIS_URL: string;
-  REDIS_TOKEN: string;
+  REDIS_URL?: string;
+  UPSTASH_REDIS_REST_URL?: string;
+  UPSTASH_REDIS_REST_TOKEN?: string;
   JWT_SECRET: string;
   JWT_EXPIRATION: string;
   RESEND_API_KEY: string;
@@ -118,6 +126,10 @@ export interface EnvVariables {
   PAYMENT_GATEWAY?: 'stripe' | 'paypal' | 'razorpay';
   PAYMENT_API_KEY?: string;
   PAYMENT_API_SECRET?: string;
+  STRIPE_SECRET_KEY?: string;
+  STRIPE_WEBHOOK_SECRET?: string;
+  STRIPE_SUCCESS_URL?: string;
+  STRIPE_CANCEL_URL?: string;
   RATE_LIMIT_WINDOW_MS: number;
   RATE_LIMIT_MAX_REQUESTS: number;
   SESSION_SECRET?: string;
