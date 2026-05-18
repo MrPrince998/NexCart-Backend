@@ -48,3 +48,23 @@ export class UserStatusChangedEvent {
     public timestamp: Date = new Date(),
   ) {}
 }
+
+export class UserBecameSellerEvent {
+  constructor(
+    public id: string,
+    public email: string,
+    public name: string,
+    public timestamp: Date = new Date(),
+  ) {}
+}
+
+export class UserSecurityEmailEvent {
+  constructor(
+    public email: string,
+    public name: string,
+    public subject: string,
+    public title: string,
+    public message: string,
+    public timestamp: Date = new Date(),
+  ) {}
+}

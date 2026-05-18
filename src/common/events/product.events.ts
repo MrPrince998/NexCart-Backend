@@ -51,3 +51,48 @@ export class ProductStatusChangedEvent {
     public timestamp: Date = new Date(),
   ) {}
 }
+
+export class ProductSellerStatusChangedEvent {
+  constructor(
+    public id: string,
+    public name: string,
+    public status: string,
+    public sellerEmail: string,
+    public sellerName: string,
+    public timestamp: Date = new Date(),
+  ) {}
+}
+
+export class SellerLowStockEvent {
+  constructor(
+    public productId: string,
+    public productName: string,
+    public availableQuantity: number,
+    public threshold: number,
+    public sellerEmail: string,
+    public sellerName: string,
+    public timestamp: Date = new Date(),
+  ) {}
+}
+
+export class WishlistPriceDropEvent {
+  constructor(
+    public productId: string,
+    public productName: string,
+    public oldPrice: number,
+    public newPrice: number,
+    public userEmail: string,
+    public userName: string,
+    public timestamp: Date = new Date(),
+  ) {}
+}
+
+export class BackInStockEvent {
+  constructor(
+    public productId: string,
+    public productName: string,
+    public userEmail: string,
+    public userName: string,
+    public timestamp: Date = new Date(),
+  ) {}
+}
