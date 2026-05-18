@@ -6,6 +6,7 @@ declare global {
     interface Request {
       user?: User;
       session?: Session;
+      rawBody?: Buffer;
     }
   }
 }

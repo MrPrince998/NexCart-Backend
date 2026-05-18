@@ -10,7 +10,7 @@ import { loadEnvVariables } from '@/core/config/load-env';
 import { EnvVariables } from '@/core/config/env.schema';
 
 async function bootstrap() {
-  const app = await NestFactory.create(AppModule);
+  const app = await NestFactory.create(AppModule, { rawBody: true });
 
   // Get environment variables and app configuration
   const configService = app.get(ConfigService<EnvVariables>);
