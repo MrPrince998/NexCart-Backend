@@ -1,10 +1,36 @@
 import { betterAuth } from 'better-auth';
 import { Pool } from 'pg';
 import { twoFactor } from 'better-auth/plugins/two-factor';
+import { enqueueEmailJob } from '@/integrations/mail';
 
 const pool = new Pool({
   connectionString: process.env.DATABASE_URL!,
 });
+
+interface AuthEmailUser {
+  email: string;
+  name?: string | null;
+}
+
+interface ResetPasswordPayload {
+  user: AuthEmailUser;
+  url: string;
+}
+
+interface ChangeEmailPayload {
+  user: AuthEmailUser;
+  newEmail: string;
+  url: string;
+}
+
+interface TwoFactorOtpPayload {
+  user: AuthEmailUser;
+  otp: string;
+}
+
+interface AuthHookContext {
+  path?: string;
+}
 
 export const auth: any = betterAuth({
   appName: 'NexCart',
@@ -16,6 +42,72 @@ export const auth: any = betterAuth({
   // Email & Password Authentication
   emailAndPassword: {
     enabled: true,
+    async sendResetPassword({ user, url }: ResetPasswordPayload) {
+      await enqueueEmailJob({
+        to: user.email,
+        subject: 'Reset your NexCart password',
+        template: 'password-reset',
+        data: {
+          userName: user.name ?? user.email,
+          resetLink: url,
+        },
+      });
+    },
+  },
+
+  databaseHooks: {
+    user: {
+      create: {
+        async after(user: { email: string; name?: string | null }) {
+          const userName = user.name ?? user.email;
+
+          await enqueueEmailJob({
+            to: user.email,
+            subject: 'Welcome to NexCart',
+            template: 'welcome',
+            data: {
+              userName,
+            },
+          });
+
+          await enqueueEmailJob({
+            to: user.email,
+            subject: 'What you can do with NexCart',
+            template: 'about-app',
+            data: {
+              userName,
+            },
+          });
+        },
+      },
+    },
+    session: {
+      create: {
+        async after(
+          session: { userId: string },
+          context?: AuthHookContext | null,
+        ) {
+          if (context?.path?.includes('/sign-up')) return;
+
+          const user = await findAuthUserById(session.userId);
+          if (!user) return;
+
+          await enqueueEmailJob({
+            to: user.email,
+            subject: 'New login to your NexCart account',
+            template: 'status-update',
+            data: {
+              userName: user.name ?? user.email,
+              title: 'New login detected',
+              message:
+                'Your NexCart account was just signed in. If this was not you, please reset your password.',
+              actionUrl: `${process.env.FRONTEND_URL}/account/security`,
+              actionText: 'Review Security',
+            },
+          });
+        },
+      },
+    },
   },
 
   // OAuth - Google
@@ -37,6 +129,27 @@ export const auth: any = betterAuth({
 
   // User Configuration
   user: {
+    changeEmail: {
+      enabled: true,
+      async sendChangeEmailConfirmation({
+        user,
+        newEmail,
+        url,
+      }: ChangeEmailPayload) {
+        await enqueueEmailJob({
+          to: user.email,
+          subject: 'Confirm your NexCart email change',
+          template: 'status-update',
+          data: {
+            userName: user.name ?? user.email,
+            title: 'Confirm email change',
+            message: `You requested to change your NexCart email to ${newEmail}.`,
+            actionUrl: url,
+            actionText: 'Confirm Email Change',
+          },
+        });
+      },
+    },
     additionalFields: {
       role: {
         type: 'string',
@@ -60,6 +173,19 @@ export const auth: any = betterAuth({
   plugins: [
     twoFactor({
       issuer: 'NexCart',
+      otpOptions: {
+        async sendOTP({ user, otp }: TwoFactorOtpPayload) {
+          await enqueueEmailJob({
+            to: user.email,
+            subject: 'Your NexCart security code',
+            template: 'otp',
+            data: {
+              userName: user.name ?? user.email,
+              otp,
+            },
+          });
+        },
+      },
     }),
   ],
 
@@ -73,6 +199,19 @@ export const auth: any = betterAuth({
     disableOriginCheck: false,
   },
 });
+
+async function findAuthUserById(userId: string) {
+  try {
+    const result = await pool.query<{
+      email: string;
+      name: string | null;
+    }>('select email, name from "user" where id = $1 limit 1', [userId]);
+
+    return result.rows[0] ?? null;
+  } catch {
+    return null;
+  }
+}
 
 export type Session = typeof auth.$Infer.Session;
 export type User = typeof auth.$Infer.Session.user;

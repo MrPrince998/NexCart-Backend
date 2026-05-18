@@ -51,6 +51,7 @@ import {
   ProductEventListener,
   UserEventListener,
   CategoryEventListener,
+  OrderEventListener,
 } from './common/listeners';
 
 const hasRedisTcpUrl = Boolean(process.env.REDIS_URL);
@@ -109,6 +110,7 @@ const hasRedisTcpUrl = Boolean(process.env.REDIS_URL);
     ProductEventListener,
     UserEventListener,
     CategoryEventListener,
+    OrderEventListener,
     { provide: APP_GUARD, useClass: AuthGuard },
     { provide: APP_GUARD, useClass: RolesGuard },
     { provide: APP_GUARD, useClass: PermissionGuard },
