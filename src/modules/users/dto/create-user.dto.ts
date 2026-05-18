@@ -1,5 +1,13 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
-import { IsBoolean, IsEmail, IsEnum, IsOptional, IsString, IsUUID, MaxLength } from 'class-validator';
+import {
+  IsBoolean,
+  IsEmail,
+  IsEnum,
+  IsOptional,
+  IsString,
+  IsUUID,
+  MaxLength,
+} from 'class-validator';
 
 export enum UserStatus {
   ACTIVE = 'active',
@@ -41,4 +49,29 @@ export class CreateUserDto {
   @IsBoolean()
   @ApiPropertyOptional({ example: true })
   isEmailVerified?: boolean;
+
+  @IsOptional()
+  @IsBoolean()
+  @ApiPropertyOptional({ example: true })
+  emailNotificationsEnabled?: boolean;
+
+  @IsOptional()
+  @IsBoolean()
+  @ApiPropertyOptional({ example: true })
+  securityEmailNotificationsEnabled?: boolean;
+
+  @IsOptional()
+  @IsBoolean()
+  @ApiPropertyOptional({ example: false })
+  marketingEmailNotificationsEnabled?: boolean;
+
+  @IsOptional()
+  @IsBoolean()
+  @ApiPropertyOptional({ example: true })
+  wishlistEmailNotificationsEnabled?: boolean;
+
+  @IsOptional()
+  @IsBoolean()
+  @ApiPropertyOptional({ example: true })
+  sellerEmailNotificationsEnabled?: boolean;
 }

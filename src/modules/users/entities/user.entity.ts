@@ -36,6 +36,21 @@ export class User {
   @Column({ default: false })
   isEmailVerified!: boolean;
 
+  @Column({ default: true })
+  emailNotificationsEnabled!: boolean;
+
+  @Column({ default: true })
+  securityEmailNotificationsEnabled!: boolean;
+
+  @Column({ default: false })
+  marketingEmailNotificationsEnabled!: boolean;
+
+  @Column({ default: true })
+  wishlistEmailNotificationsEnabled!: boolean;
+
+  @Column({ default: true })
+  sellerEmailNotificationsEnabled!: boolean;
+
   @Column({ type: 'varchar', nullable: true })
   image!: string | null;
 
