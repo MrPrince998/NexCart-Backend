@@ -1,7 +1,5 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { OnEvent } from '@nestjs/event-emitter';
-import { Queue } from 'bullmq';
-import { InjectQueue } from '@nestjs/bullmq';
 import {
   ProductCreatedEvent,
   ProductUpdatedEvent,
@@ -10,7 +8,6 @@ import {
   ProductStatusChangedEvent,
 } from '../events';
 import { CacheService } from '@/integrations/cache';
-import { EMAIL_QUEUE } from '@/jobs/queues';
 
 /**
  * Product Event Listeners
@@ -23,10 +20,7 @@ import { EMAIL_QUEUE } from '@/jobs/queues';
 export class ProductEventListener {
   private readonly logger = new Logger(ProductEventListener.name);
 
-  constructor(
-    private readonly cacheService: CacheService,
-    @InjectQueue(EMAIL_QUEUE) private readonly emailQueue: Queue,
-  ) {}
+  constructor(private readonly cacheService: CacheService) {}
 
   @OnEvent('product.created')
   async handleProductCreated(event: ProductCreatedEvent) {
@@ -39,23 +33,7 @@ export class ProductEventListener {
       await this.cacheService.deletePattern('products:*');
       await this.cacheService.deletePattern('featured:*');
 
-      // Queue admin notification email
-      await this.emailQueue.add('send-email', {
-        to: process.env.ADMIN_EMAIL || 'admin@nexcart.com',
-        subject: `New Product Created: ${event.name}`,
-        template: 'product-created-admin',
-        data: {
-          productName: event.name,
-          productId: event.id,
-          sku: event.sku,
-          price: event.price,
-          createdAt: event.createdAt,
-        },
-      });
-
-      this.logger.log(
-        `Product created event handled: cached invalidated, admin notification queued`,
-      );
+      this.logger.log(`Product created event handled: cache invalidated`);
     } catch (error) {
       this.logger.error(`Error handling product created event:`, error);
       // Continue - don't throw
@@ -106,19 +84,6 @@ export class ProductEventListener {
     try {
       // Invalidate featured products cache
       await this.cacheService.deletePattern('featured:*');
-
-      // If featured, send notification
-      if (event.isFeatured) {
-        await this.emailQueue.add('send-email', {
-          to: process.env.ADMIN_EMAIL || 'admin@nexcart.com',
-          subject: `Product Featured: ${event.name}`,
-          template: 'product-featured',
-          data: {
-            productName: event.name,
-            productId: event.id,
-          },
-        });
-      }
 
       this.logger.log(`Product featured: cache invalidated`);
     } catch (error) {

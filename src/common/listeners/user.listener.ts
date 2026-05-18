@@ -7,6 +7,7 @@ import {
   UserUpdatedEvent,
   UserDeletedEvent,
   UserEmailVerifiedEvent,
+  UserBecameSellerEvent,
   UserStatusChangedEvent,
 } from '../events';
 import { CacheService } from '@/integrations/cache';
@@ -37,19 +38,28 @@ export class UserEventListener {
     );
 
     try {
-      // Queue welcome email with verification link
+      // Queue account onboarding emails
       await this.emailQueue.add('send-email', {
         to: event.email,
-        subject: 'Welcome to NexCart!',
+        subject: 'Welcome to NexCart',
         template: 'welcome',
         data: {
           userName: event.name,
-          verificationLink: `${process.env.APP_URL}/verify-email/${event.id}`,
           email: event.email,
         },
       });
 
-      this.logger.log(`User created: welcome email queued`);
+      await this.emailQueue.add('send-email', {
+        to: event.email,
+        subject: 'What you can do with NexCart',
+        template: 'about-app',
+        data: {
+          userName: event.name,
+          email: event.email,
+        },
+      });
+
+      this.logger.log(`User created: onboarding emails queued`);
     } catch (error) {
       this.logger.error(`Error handling user created event:`, error);
     }
@@ -113,7 +123,7 @@ export class UserEventListener {
         template: 'email-verified',
         data: {
           email: event.email,
-          dashboardUrl: `${process.env.APP_URL}/dashboard`,
+          dashboardUrl: `${process.env.FRONTEND_URL}/dashboard`,
         },
       });
 
@@ -178,6 +188,27 @@ export class UserEventListener {
       this.logger.log(`User status changed: notification queued`);
     } catch (error) {
       this.logger.error(`Error handling user status changed event:`, error);
+    }
+  }
+
+  @OnEvent('user.became_seller')
+  async handleUserBecameSeller(event: UserBecameSellerEvent) {
+    this.logger.log(`User became seller: ${event.email} (${event.id})`);
+
+    try {
+      await this.emailQueue.add('send-email', {
+        to: event.email,
+        subject: 'Your seller account is active',
+        template: 'seller-approved',
+        data: {
+          userName: event.name,
+          sellerDashboardUrl: `${process.env.FRONTEND_URL}/seller`,
+        },
+      });
+
+      this.logger.log(`User became seller: email queued`);
+    } catch (error) {
+      this.logger.error(`Error handling user became seller event:`, error);
     }
   }
 }

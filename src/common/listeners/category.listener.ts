@@ -1,7 +1,5 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { OnEvent } from '@nestjs/event-emitter';
-import { Queue } from 'bullmq';
-import { InjectQueue } from '@nestjs/bullmq';
 import {
   ProductCategoryCreatedEvent,
   ProductCategoryUpdatedEvent,
@@ -9,7 +7,6 @@ import {
   ProductCategoryStatusChangedEvent,
 } from '../events';
 import { CacheService } from '@/integrations/cache';
-import { EMAIL_QUEUE } from '@/jobs/queues';
 
 /**
  * Category Event Listeners
@@ -22,10 +19,7 @@ import { EMAIL_QUEUE } from '@/jobs/queues';
 export class CategoryEventListener {
   private readonly logger = new Logger(CategoryEventListener.name);
 
-  constructor(
-    private readonly cacheService: CacheService,
-    @InjectQueue(EMAIL_QUEUE) private readonly emailQueue: Queue,
-  ) {}
+  constructor(private readonly cacheService: CacheService) {}
 
   @OnEvent('category.created')
   async handleCategoryCreated(event: ProductCategoryCreatedEvent) {
@@ -38,19 +32,7 @@ export class CategoryEventListener {
       await this.cacheService.deletePattern('categories:*');
       await this.cacheService.deletePattern('category:*');
 
-      // Queue admin notification
-      await this.emailQueue.add('send-email', {
-        to: process.env.ADMIN_EMAIL || 'admin@nexcart.com',
-        subject: `New Category Created: ${event.name}`,
-        template: 'category-created-admin',
-        data: {
-          categoryName: event.name,
-          categoryId: event.id,
-          slug: event.slug,
-        },
-      });
-
-      this.logger.log(`Category created: caches invalidated, admin notified`);
+      this.logger.log(`Category created: caches invalidated`);
     } catch (error) {
       this.logger.error(`Error handling category created event:`, error);
     }
