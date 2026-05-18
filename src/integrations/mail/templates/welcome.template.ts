@@ -1,7 +1,10 @@
-export const welcomeTemplate = (name: string) => `
-  <div style="font-family: Arial; padding: 20px;">
-    <h2>Welcome ${name} 🎉</h2>
-    <p>Your restaurant account has been successfully created.</p>
-    <p>We're excited to have you onboard!</p>
+export const welcomeTemplate = (
+  name: string,
+  message = 'Your NexCart account has been successfully created.',
+) => `
+  <div style="font-family: Arial, sans-serif; padding: 20px;">
+    <h2>Welcome ${name}</h2>
+    <p>${message}</p>
+    <p>We're excited to have you onboard.</p>
   </div>
 `;
