@@ -2,6 +2,10 @@ import { Test, TestingModule } from '@nestjs/testing';
 import { ProductsService } from './products.service';
 import { getRepositoryToken } from '@nestjs/typeorm';
 import { Product } from './entities/product.entity';
+import { Image } from '@/modules/images/entities/image.entity';
+import { CloudinaryService } from '@/integrations/cloudinary/cloudinary.service';
+import { DataSource } from 'typeorm';
+import { EventEmitter2 } from '@nestjs/event-emitter';
 
 describe('ProductsService', () => {
   let service: ProductsService;
@@ -20,6 +24,30 @@ describe('ProductsService', () => {
         {
           provide: getRepositoryToken(Product),
           useValue: productRepository,
+        },
+        {
+          provide: getRepositoryToken(Image),
+          useValue: {
+            createQueryBuilder: jest.fn(),
+          },
+        },
+        {
+          provide: CloudinaryService,
+          useValue: {
+            activateImages: jest.fn(),
+          },
+        },
+        {
+          provide: DataSource,
+          useValue: {
+            transaction: jest.fn(),
+          },
+        },
+        {
+          provide: EventEmitter2,
+          useValue: {
+            emit: jest.fn(),
+          },
         },
       ],
     }).compile();

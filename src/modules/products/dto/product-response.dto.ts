@@ -22,7 +22,9 @@ export class ProductResponseDto {
   @ApiProperty({ example: 'wireless-headphones' })
   slug!: string;
 
-  @ApiProperty({ example: 'High-quality wireless headphones with noise cancellation' })
+  @ApiProperty({
+    example: 'High-quality wireless headphones with noise cancellation',
+  })
   description!: string;
 
   @ApiProperty({ example: '199.99' })

@@ -1,9 +1,11 @@
 import { Product } from '@/modules/products/entities/product.entity';
+import { ProductAttribute } from '@/modules/product-attributes/entities/product-attribute.entity';
 import {
   Column,
   CreateDateColumn,
   DeleteDateColumn,
   Entity,
+  Index,
   JoinColumn,
   ManyToOne,
   OneToMany,
@@ -12,6 +14,10 @@ import {
 } from 'typeorm';
 
 @Entity('product_categories')
+@Index(['slug'])
+@Index(['parentCategoryId'])
+@Index(['isActive'])
+@Index(['createdAt'])
 export class ProductCategory {
   @PrimaryGeneratedColumn('uuid')
   id!: string;
@@ -23,12 +29,15 @@ export class ProductCategory {
   slug!: string;
 
   @Column({ type: 'text', nullable: true })
-  description!: string;
+  description!: string | null;
 
-  @Column()
-  image!: string;
+  @Column({ type: 'varchar', nullable: true })
+  image!: string | null;
 
-  @Column({ nullable: true })
+  @Column({ type: 'int', default: 0 })
+  sortOrder!: number;
+
+  @Column({ type: 'uuid', nullable: true })
   parentCategoryId!: string | null;
 
   @ManyToOne(() => ProductCategory, (category) => category.children, {
@@ -45,6 +54,9 @@ export class ProductCategory {
 
   @OneToMany(() => Product, (product) => product.category)
   products!: Product[];
+
+  @OneToMany(() => ProductAttribute, (attribute) => attribute.category)
+  attributes!: ProductAttribute[];
 
   @CreateDateColumn()
   createdAt!: Date;

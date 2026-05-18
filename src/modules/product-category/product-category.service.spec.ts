@@ -3,6 +3,7 @@ import { ProductCategoryService } from './product-category.service';
 import { getRepositoryToken } from '@nestjs/typeorm';
 import { ProductCategory } from './entities/product-category.entity';
 import { Product } from '../products/entities/product.entity';
+import { EventEmitter2 } from '@nestjs/event-emitter';
 
 describe('ProductCategoryService', () => {
   let service: ProductCategoryService;
@@ -25,6 +26,10 @@ describe('ProductCategoryService', () => {
         {
           provide: getRepositoryToken(Product),
           useValue: productRepository,
+        },
+        {
+          provide: EventEmitter2,
+          useValue: { emit: jest.fn() },
         },
       ],
     }).compile();

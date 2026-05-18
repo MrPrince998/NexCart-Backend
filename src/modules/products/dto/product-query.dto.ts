@@ -6,12 +6,18 @@ import { ApiPropertyOptional } from '@nestjs/swagger';
 export class ProductQueryDto extends PaginationQueryDto {
   @IsOptional()
   @IsString()
-  @ApiPropertyOptional({ example: 'headphone', description: 'Search query for name, brand, or SKU' })
+  @ApiPropertyOptional({
+    example: 'headphone',
+    description: 'Search query for name, brand, or SKU',
+  })
   q?: string;
 
   @IsOptional()
   @IsString()
-  @ApiPropertyOptional({ example: 'audio', description: 'Category id or slug to filter products' })
+  @ApiPropertyOptional({
+    example: 'audio',
+    description: 'Category id or slug to filter products',
+  })
   category?: string;
 
   @IsOptional()
@@ -21,16 +27,25 @@ export class ProductQueryDto extends PaginationQueryDto {
 
   @IsOptional()
   @IsEnum(ProductStatus)
-  @ApiPropertyOptional({ enum: ProductStatus, description: 'Filter by product status' })
+  @ApiPropertyOptional({
+    enum: ProductStatus,
+    description: 'Filter by product status',
+  })
   status?: ProductStatus;
 
   @IsOptional()
   @IsIn(['createdAt', 'updatedAt', 'name'])
-  @ApiPropertyOptional({ example: 'createdAt', description: 'Field to sort by' })
+  @ApiPropertyOptional({
+    example: 'createdAt',
+    description: 'Field to sort by',
+  })
   sortBy?: 'createdAt' | 'updatedAt' | 'name';
 
   @IsOptional()
   @IsIn(['ASC', 'DESC'])
-  @ApiPropertyOptional({ example: 'DESC', description: 'Sort order (ASC or DESC)' })
+  @ApiPropertyOptional({
+    example: 'DESC',
+    description: 'Sort order (ASC or DESC)',
+  })
   sortOrder?: 'ASC' | 'DESC';
 }

@@ -19,7 +19,9 @@ describe('ProductCategoryController', () => {
       ],
     }).compile();
 
-    controller = module.get<ProductCategoryController>(ProductCategoryController);
+    controller = module.get<ProductCategoryController>(
+      ProductCategoryController,
+    );
     jest.clearAllMocks();
   });
 
