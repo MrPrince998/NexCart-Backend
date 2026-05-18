@@ -5,6 +5,7 @@ import { EMAIL_QUEUE, NOTIFICATION_QUEUE, INVOICE_QUEUE } from './queues';
 import { EmailProcessor } from './processors/email.processor';
 import { NotificationProcessor } from './processors/notification.processor';
 import { InvoiceProcessor } from './processors/invoice.processor';
+import { EmailService } from '@/integrations/mail';
 
 /**
  * Jobs Module - BullMQ Queue Configuration
@@ -29,7 +30,12 @@ import { InvoiceProcessor } from './processors/invoice.processor';
       { name: INVOICE_QUEUE },
     ),
   ],
-  providers: [EmailProcessor, NotificationProcessor, InvoiceProcessor],
+  providers: [
+    EmailService,
+    EmailProcessor,
+    NotificationProcessor,
+    InvoiceProcessor,
+  ],
   exports: [BullModule],
 })
 export class JobsModule {}

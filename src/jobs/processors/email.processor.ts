@@ -2,6 +2,7 @@ import { Injectable, Logger } from '@nestjs/common';
 import { Processor, WorkerHost } from '@nestjs/bullmq';
 import { Job } from 'bullmq';
 import { EMAIL_QUEUE, SendEmailJob, SendEmailsJob } from '../queues';
+import { EmailService } from '@/integrations/mail';
 
 /**
  * Email Processor
@@ -12,6 +13,10 @@ import { EMAIL_QUEUE, SendEmailJob, SendEmailsJob } from '../queues';
 @Processor(EMAIL_QUEUE)
 export class EmailProcessor extends WorkerHost {
   private readonly logger = new Logger(EmailProcessor.name);
+
+  constructor(private readonly emailService: EmailService) {
+    super();
+  }
 
   async process(job: Job<SendEmailJob | SendEmailsJob>): Promise<any> {
     try {
@@ -29,14 +34,12 @@ export class EmailProcessor extends WorkerHost {
   private async handleSendEmail(job: Job<SendEmailJob>) {
     this.logger.log(`Processing email job: ${job.id} to ${job.data.to}`);
 
-    // TODO: Implement actual email sending logic
-    // Example:
-    // await this.emailService.send({
-    //   to: job.data.to,
-    //   subject: job.data.subject,
-    //   template: job.data.template,
-    //   data: job.data.data,
-    // });
+    await this.emailService.send({
+      to: job.data.to,
+      subject: job.data.subject,
+      template: job.data.template,
+      data: job.data.data,
+    });
 
     this.logger.log(`Email job ${job.id} completed`);
     return { success: true, jobId: job.id };
@@ -47,19 +50,11 @@ export class EmailProcessor extends WorkerHost {
       `Processing bulk email job: ${job.id} with ${job.data.recipients.length} recipients`,
     );
 
-    // TODO: Send emails in parallel with concurrency control
-    // const results = await Promise.allSettled(
-    //   job.data.recipients.map((recipient) =>
-    //     this.emailService.send({
-    //       to: recipient.to,
-    //       subject: recipient.subject,
-    //       template: recipient.template,
-    //       data: recipient.data,
-    //     })
-    //   )
-    // );
+    const results = await Promise.allSettled(
+      job.data.recipients.map((recipient) => this.emailService.send(recipient)),
+    );
 
     this.logger.log(`Bulk email job ${job.id} completed`);
-    return { success: true, jobId: job.id };
+    return { success: true, jobId: job.id, results };
   }
 }
