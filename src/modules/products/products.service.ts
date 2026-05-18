@@ -22,7 +22,12 @@ import {
   ProductDeletedEvent,
   ProductStatusChangedEvent,
   ProductFeaturedEvent,
+  ProductSellerStatusChangedEvent,
+  WishlistPriceDropEvent,
+  BackInStockEvent,
 } from '@/common/events';
+import { WishlistItem } from '@/modules/wishlist/entities/wishlist-item.entity';
+import { User } from '@/modules/users/entities/user.entity';
 
 const PRODUCT_SORT_COLUMNS = {
   createdAt: 'product.createdAt',
@@ -154,6 +159,8 @@ export class ProductsService {
     // Capture old values for event emission
     const oldStatus = product.status;
     const oldFeatured = product.isFeatured;
+    const oldPrice = this.getEffectivePrice(product);
+    const oldStock = product.stock;
 
     if (updateProductDto.name && updateProductDto.name !== product.name) {
       product.slug = await generateSlug(
@@ -175,6 +182,15 @@ export class ProductsService {
     Object.assign(product, updateProductDto);
 
     const updatedProduct = await this.productRepository.save(product);
+    const newPrice = this.getEffectivePrice(updatedProduct);
+
+    if (newPrice < oldPrice) {
+      await this.emitWishlistPriceDrop(updatedProduct, oldPrice, newPrice);
+    }
+
+    if (oldStock <= 0 && updatedProduct.stock > 0) {
+      await this.emitBackInStock(updatedProduct);
+    }
 
     // Emit product updated event
     this.eventEmitter.emit(
@@ -199,6 +215,8 @@ export class ProductsService {
           updatedProduct.status,
         ),
       );
+
+      await this.emitProductSellerStatusChanged(updatedProduct.id);
     }
 
     // Emit featured changed event if featured status changed
@@ -251,6 +269,93 @@ export class ProductsService {
       .createQueryBuilder('product')
       .leftJoinAndSelect('product.category', 'category')
       .where('product.deletedAt IS NULL');
+  }
+
+  private async emitProductSellerStatusChanged(id: string) {
+    const product = await this.productRepository.findOne({
+      where: { id },
+      relations: { store: { owner: true } },
+    });
+
+    if (!product?.store?.owner) return;
+
+    this.eventEmitter.emit(
+      'product.seller.status.changed',
+      new ProductSellerStatusChangedEvent(
+        product.id,
+        product.name,
+        product.status,
+        product.store.owner.email,
+        product.store.owner.name,
+      ),
+    );
+  }
+
+  private getEffectivePrice(product: Pick<Product, 'price' | 'discountPrice'>) {
+    return Number(product.discountPrice ?? product.price);
+  }
+
+  private async emitWishlistPriceDrop(
+    product: Product,
+    oldPrice: number,
+    newPrice: number,
+  ) {
+    const wishlistItems = await this.dataSource
+      .getRepository(WishlistItem)
+      .find({ where: { productId: product.id } });
+    const userIds = [...new Set(wishlistItems.map((item) => item.userId))];
+    if (!userIds.length) return;
+
+    const users = await this.dataSource.getRepository(User).find({
+      where: { id: In(userIds) },
+    });
+
+    for (const user of users) {
+      if (
+        !user.emailNotificationsEnabled ||
+        !user.wishlistEmailNotificationsEnabled
+      ) {
+        continue;
+      }
+
+      this.eventEmitter.emit(
+        'wishlist.price_drop',
+        new WishlistPriceDropEvent(
+          product.id,
+          product.name,
+          oldPrice,
+          newPrice,
+          user.email,
+          user.name,
+        ),
+      );
+    }
+  }
+
+  private async emitBackInStock(product: Product) {
+    const wishlistItems = await this.dataSource
+      .getRepository(WishlistItem)
+      .find({ where: { productId: product.id } });
+    const userIds = [...new Set(wishlistItems.map((item) => item.userId))];
+    if (!userIds.length) return;
+
+    const users = await this.dataSource.getRepository(User).find({
+      where: { id: In(userIds) },
+    });
+
+    for (const user of users) {
+      if (
+        !user.emailNotificationsEnabled ||
+        !user.wishlistEmailNotificationsEnabled
+      ) {
+        continue;
+      }
+
+      this.eventEmitter.emit(
+        'wishlist.back_in_stock',
+        new BackInStockEvent(product.id, product.name, user.email, user.name),
+      );
+    }
   }
 
   /**

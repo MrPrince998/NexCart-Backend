@@ -1,8 +1,13 @@
 import { StoreStatus } from '@/common/enums';
-import { emptyReponse, successResponse } from '@/common/handler/response.helper';
+import { StoreStatusChangedEvent } from '@/common/events';
+import {
+  emptyReponse,
+  successResponse,
+} from '@/common/handler/response.helper';
 import { generateSlug } from '@/common/utils/generate-slug.util';
 import { Product } from '@/modules/products/entities/product.entity';
 import { Injectable, NotFoundException } from '@nestjs/common';
+import { EventEmitter2 } from '@nestjs/event-emitter';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { CreateStoreDto, UpdateStoreDto } from './dto/store.dto';
@@ -15,6 +20,7 @@ export class StoresService {
     private readonly storeRepository: Repository<Store>,
     @InjectRepository(Product)
     private readonly productRepository: Repository<Product>,
+    private readonly eventEmitter: EventEmitter2,
   ) {}
 
   async create(ownerId: string, dto: CreateStoreDto) {
@@ -28,19 +34,28 @@ export class StoresService {
       supportPhone: dto.supportPhone ?? null,
       status: StoreStatus.PENDING,
     });
-    return successResponse(await this.storeRepository.save(store), 'Store created successfully', 201);
+    const savedStore = await this.storeRepository.save(store);
+    await this.emitStoreStatusChanged(savedStore.id);
+
+    return successResponse(savedStore, 'Store created successfully', 201);
   }
 
   async mine(ownerId: string) {
     return successResponse(
-      await this.storeRepository.find({ where: { ownerId }, relations: { products: true } }),
+      await this.storeRepository.find({
+        where: { ownerId },
+        relations: { products: true },
+      }),
       'Stores retrieved successfully',
     );
   }
 
   async findAll() {
     return successResponse(
-      await this.storeRepository.find({ relations: { owner: true }, order: { createdAt: 'DESC' } }),
+      await this.storeRepository.find({
+        relations: { owner: true },
+        order: { createdAt: 'DESC' },
+      }),
       'Stores retrieved successfully',
     );
   }
@@ -57,18 +72,27 @@ export class StoresService {
   async update(id: string, dto: UpdateStoreDto) {
     const store = await this.storeRepository.findOne({ where: { id } });
     if (!store) throw new NotFoundException('Store not found');
+    const oldStatus = store.status;
     if (dto.name && dto.name !== store.name) {
       store.slug = await generateSlug(dto.name, this.storeRepository);
     }
     Object.assign(store, dto);
-    return successResponse(await this.storeRepository.save(store), 'Store updated successfully');
+    const savedStore = await this.storeRepository.save(store);
+
+    if (oldStatus !== savedStore.status) {
+      await this.emitStoreStatusChanged(savedStore.id);
+    }
+
+    return successResponse(savedStore, 'Store updated successfully');
   }
 
   async dashboard(ownerId: string) {
     const stores = await this.storeRepository.find({ where: { ownerId } });
     const storeIds = stores.map((store) => store.id);
     const productCount = storeIds.length
-      ? await this.productRepository.count({ where: storeIds.map((storeId) => ({ storeId })) })
+      ? await this.productRepository.count({
+          where: storeIds.map((storeId) => ({ storeId })),
+        })
       : 0;
 
     return successResponse(
@@ -87,5 +111,24 @@ export class StoresService {
     const result = await this.storeRepository.softDelete(id);
     if (!result.affected) throw new NotFoundException('Store not found');
     return emptyReponse('Store deleted successfully');
+  }
+
+  private async emitStoreStatusChanged(id: string) {
+    const store = await this.storeRepository.findOne({
+      where: { id },
+      relations: { owner: true },
+    });
+    if (!store) return;
+
+    this.eventEmitter.emit(
+      'store.status.changed',
+      new StoreStatusChangedEvent(
+        store.id,
+        store.name,
+        store.status,
+        store.owner.email,
+        store.owner.name,
+      ),
+    );
   }
 }
